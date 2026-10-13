@@ -21,6 +21,8 @@ import Admin from '../../../layouts/Admin.astro';
   </div>
 
   <script>
+    import { escapeHtml } from '../../../lib/escape';
+
     const token = localStorage.getItem('token');
     async function api(path: string, opts: { method?: string } = {}) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -43,10 +45,10 @@ import Admin from '../../../layouts/Admin.astro';
         body.innerHTML = entries.map((e: any, i: number) => `
           <div class="lb-row-padded">
             <span class="lb-rank-lg ${i < 3 ? 'top' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</span>
-            <div class="lb-avatar-lg ${e.role === 'admin' ? 'lb-avatar-admin' : 'lb-avatar-user'}">${(e.username || '?')[0].toUpperCase()}</div>
+            <div class="lb-avatar-lg ${e.role === 'admin' ? 'lb-avatar-admin' : 'lb-avatar-user'}">${escapeHtml((e.username || '?')[0].toUpperCase())}</div>
             <div class="lb-info">
-              <div class="lb-name">${e.username}</div>
-              <div class="lb-sub">${e.email || ''}</div>
+              <div class="lb-name">${escapeHtml(e.username)}</div>
+              <div class="lb-sub">${escapeHtml(e.email || '')}</div>
               <div class="lb-stats">${e.enrolledCourses ?? 0} cours · ${e.passedModules ?? 0} modules validés</div>
             </div>
             <div class="lb-score-col">

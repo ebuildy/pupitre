@@ -25,6 +25,8 @@ import App from '../layouts/App.astro';
   </div>
 
   <script>
+    import { escapeHtml, safeUrl } from '../lib/escape';
+
     function medal(rank: number) {
       if (rank === 1) return '🥇';
       if (rank === 2) return '🥈';
@@ -33,11 +35,11 @@ import App from '../layouts/App.astro';
     }
 
     function avatarContent(entry: any) {
-      const initial = (entry.username || '?')[0].toUpperCase();
+      const initial = escapeHtml((entry.username || '?')[0].toUpperCase());
       if (!entry.avatarUrl) return initial;
-      const isUrl = entry.avatarUrl.startsWith('http://') || entry.avatarUrl.startsWith('https://');
-      if (isUrl) return `<img src="${entry.avatarUrl}" alt="${entry.username}" />`;
-      return entry.avatarUrl;
+      const src = safeUrl(entry.avatarUrl);
+      if (src) return `<img src="${escapeHtml(src)}" alt="${escapeHtml(entry.username)}" />`;
+      return escapeHtml(entry.avatarUrl);
     }
 
     function podiumCard(e: any) {
@@ -58,7 +60,7 @@ import App from '../layouts/App.astro';
         <a href="/users/${e.userId}" class="lb-podium-card ${orderMap[e.rank] ?? ''}">
           <div class="lb-podium-avatar ${sizeMap[e.rank] ?? 'w-16 h-16 text-lg border-line bg-fill'}">${avatarContent(e)}</div>
           <div class="lb-podium-medal ${medalSize}">${medal(e.rank)}</div>
-          <div class="lb-podium-name ${nameSize}">${e.username}</div>
+          <div class="lb-podium-name ${nameSize}">${escapeHtml(e.username)}</div>
           <div class="lb-podium-count">${e.count} badge${e.count > 1 ? 's' : ''}</div>
           <div class="lb-podium-block ${blockMap[e.rank] ?? 'h-8 bg-fill text-ink-soft'}">${e.rank}</div>
         </a>
@@ -71,16 +73,17 @@ import App from '../layouts/App.astro';
       const extra = icons.length > 10
         ? `<span class="text-[.75rem] text-ink-soft">+${icons.length - 10}</span>`
         : '';
-      const initial = (e.username || '?')[0].toUpperCase();
-      const avatarHtml = e.avatarUrl
-        ? (e.avatarUrl.startsWith('http') ? `<img src="${e.avatarUrl}" alt="${e.username}" class="w-full h-full object-cover" />` : e.avatarUrl)
-        : initial;
+      const initial = escapeHtml((e.username || '?')[0].toUpperCase());
+      const rowSrc = safeUrl(e.avatarUrl);
+      const avatarHtml = rowSrc
+        ? `<img src="${escapeHtml(rowSrc)}" alt="${escapeHtml(e.username)}" class="w-full h-full object-cover" />`
+        : (e.avatarUrl ? escapeHtml(e.avatarUrl) : initial);
       return `
         <a href="/users/${e.userId}" class="lb-row">
           <div class="lb-rank">#${e.rank}</div>
           <div class="lb-avatar">${avatarHtml}</div>
           <div class="lb-info">
-            <div class="lb-username">${e.username}</div>
+            <div class="lb-username">${escapeHtml(e.username)}</div>
             <div class="lb-count">${e.count} badge${e.count > 1 ? 's' : ''}</div>
           </div>
           <div class="lb-icons sm:hidden">${displayIcons}${extra}</div>
