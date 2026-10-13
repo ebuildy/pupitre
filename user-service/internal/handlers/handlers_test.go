@@ -1546,7 +1546,7 @@ func TestEnroll_DBError(t *testing.T) {
 
 	repos := fake.NewRepositories()
 	repos.Enrollments = &fake.EnrollmentRepository{Err: errors.New("db error")}
-	r := newTestRouterWithRepos(repos)
+	r := newPublicCourseEnrollRouter(t, repos)
 
 	rec := htDo(t, r, "POST", "/api/enrollments/my-course", "", htAuthHeader(t, "student"))
 	if rec.Code != http.StatusInternalServerError {
@@ -1558,12 +1558,30 @@ func TestEnroll_DBError(t *testing.T) {
 func TestEnroll_Success(t *testing.T) {
 	t.Parallel()
 
-	r := newTestRouter()
+	r := newPublicCourseEnrollRouter(t, fake.NewRepositories())
 
 	rec := htDo(t, r, "POST", "/api/enrollments/my-course", "", htAuthHeader(t, "student"))
 	if rec.Code != http.StatusOK {
 		t.Errorf("want 200, got %d", rec.Code)
 	}
+}
+
+// newPublicCourseEnrollRouter builds a router whose catalog serves a single
+// public course "my-course", so self-enrollment passes the access gate and
+// the test can exercise the Create path.
+func newPublicCourseEnrollRouter(t *testing.T, repos *repository.Repositories) http.Handler {
+	t.Helper()
+
+	courseSvc, _ := newCatalogServer(t, catalogFixture{Courses: map[string]CourseInfo{
+		"my-course": {Slug: "my-course", ID: "my-course", IsPublic: true},
+	}})
+	cfg := &config.Config{
+		JWTSecret: htSecret, JWTExpiryH: htExpiry, CORSOrigins: []string{"*"},
+		InternalSecret: htInternalSecret, CourseServiceURL: courseSvc.URL,
+	}
+	s := &State{Repos: repos, Config: cfg}
+
+	return BuildRouter(s, cfg, false)
 }
 
 // TestUnenroll_DBError verifies unenroll DB error behavior.
@@ -1631,9 +1649,20 @@ func TestMarkLessonComplete_Success(t *testing.T) {
 func TestEnroll_ForeignKeyConstraint(t *testing.T) {
 	t.Parallel()
 
+	// The course must pass the self-enroll gate (exist + be public) before
+	// Create runs, so point the catalog at a stub serving a public course.
+	courseSvc, _ := newCatalogServer(t, catalogFixture{Courses: map[string]CourseInfo{
+		"test-course": {Slug: "test-course", ID: "test-course", IsPublic: true},
+	}})
+
 	repos := fake.NewRepositories()
 	repos.Enrollments = &fake.EnrollmentRepository{Err: errors.New("foreign key constraint violation")}
-	r := newTestRouterWithRepos(repos)
+	cfg := &config.Config{
+		JWTSecret: htSecret, JWTExpiryH: htExpiry, CORSOrigins: []string{"*"},
+		InternalSecret: htInternalSecret, CourseServiceURL: courseSvc.URL,
+	}
+	s := &State{Repos: repos, Config: cfg}
+	r := BuildRouter(s, cfg, false)
 
 	rec := htDo(t, r, "POST", "/api/enrollments/test-course", "", htAuthHeader(t, "student"))
 	if rec.Code != http.StatusUnauthorized {

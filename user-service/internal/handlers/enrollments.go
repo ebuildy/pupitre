@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/genesary/pupitre/internal/metrics"
+	"github.com/genesary/pupitre/internal/middleware"
 	"github.com/genesary/pupitre/user-service/internal/repository"
 )
 
@@ -29,25 +30,10 @@ func (s *State) Enroll(writer http.ResponseWriter, req *http.Request) {
 	slug := param(req, "slug")
 	claims := s.claims(req)
 
-	course, found := s.catalog().Course(req.Context(), slug)
-	if !found {
-		zap.L().Warn("could not fetch course details for xp gate", zap.String("courseSlug", slug))
-	}
+	if status, msg, ok := s.enrollGate(req.Context(), slug, claims); !ok {
+		s.Error(writer, status, msg)
 
-	if found && course.XPRequired > 0 {
-		total, xpErr := s.Repos.XP.Total(req.Context(), claims.Subject)
-		if xpErr != nil {
-			zap.L().Error("xp gate check failed", zap.String("userID", claims.Subject), zap.Error(xpErr))
-			s.Error(writer, http.StatusInternalServerError, "Database error")
-
-			return
-		}
-
-		if total < course.XPRequired {
-			s.Error(writer, http.StatusForbidden, "Not enough XP to enroll in this course")
-
-			return
-		}
+		return
 	}
 
 	err := s.Repos.Enrollments.Create(req.Context(), claims.Subject, slug)
@@ -65,6 +51,58 @@ func (s *State) Enroll(writer http.ResponseWriter, req *http.Request) {
 
 	metrics.EnrollmentsTotal.Inc()
 	s.JSON(writer, http.StatusOK, map[string]string{groupsRespKeyMessage: "Enrolled successfully"})
+}
+
+// enrollGate validates a self-service enrollment request before any row is
+// created. It returns the HTTP status/message to send when enrollment must
+// be rejected, or ok == true to proceed.
+//
+// This guard closes the self-enroll access-control hole: the handler used
+// to enroll even when the catalog lookup failed, letting any learner
+// self-enroll in a non-existent or private course and then read its content
+// (course-service treats "enrolled" as the only gate for non-public
+// courses).
+//
+//nolint:gocritic // named results would trip nonamedreturns; see the per-return meaning above.
+func (s *State) enrollGate(ctx context.Context, slug string, claims *middleware.Claims) (int, string, bool) {
+	if !slugRE.MatchString(slug) {
+		return http.StatusBadRequest, "Invalid course slug", false
+	}
+
+	isAdmin := claims.Role == groupsRoleAdmin
+
+	course, found := s.catalog().Course(ctx, slug)
+	if !found {
+		// Fail closed: the course either does not exist or course-service is
+		// unreachable. In both cases we must not create an enrollment for an
+		// unverified slug.
+		zap.L().Warn("enroll rejected: course not found or catalog unreachable",
+			zap.String("courseSlug", slug), zap.String("userID", claims.Subject))
+
+		return http.StatusNotFound, "Course not found", false
+	}
+
+	// Only public courses are self-enrollable. Private courses are granted
+	// through the admin/manager and path/group enrollment paths. Admins may
+	// still self-enroll anywhere.
+	if !course.IsPublic && !isAdmin {
+		return http.StatusForbidden, "This course is not open for self-enrollment", false
+	}
+
+	if course.XPRequired > 0 && !isAdmin {
+		total, xpErr := s.Repos.XP.Total(ctx, claims.Subject)
+		if xpErr != nil {
+			zap.L().Error("xp gate check failed", zap.String("userID", claims.Subject), zap.Error(xpErr))
+
+			return http.StatusInternalServerError, "Database error", false
+		}
+
+		if total < course.XPRequired {
+			return http.StatusForbidden, "Not enough XP to enroll in this course", false
+		}
+	}
+
+	return http.StatusOK, "", true
 }
 
 // Unenroll godoc

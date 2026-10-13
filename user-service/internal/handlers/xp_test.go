@@ -157,7 +157,7 @@ func newXPGateRouter(t *testing.T, repos *repository.Repositories, xpRequired in
 	t.Helper()
 
 	srv, _ := newCatalogServer(t, catalogFixture{Courses: map[string]CourseInfo{
-		"gated-course": {Slug: "gated-course", ID: "gated-course", XPRequired: xpRequired},
+		"gated-course": {Slug: "gated-course", ID: "gated-course", IsPublic: true, XPRequired: xpRequired},
 	}})
 
 	cfg := &config.Config{
@@ -239,8 +239,10 @@ func TestEnroll_XPGate_NoRequirement(t *testing.T) {
 	}
 }
 
-// TestEnroll_XPGate_CourseServiceDown verifies that a dead
-// course-service still allows enrollment — graceful degradation.
+// TestEnroll_XPGate_CourseServiceDown verifies that a dead course-service
+// makes enrollment fail closed: the course cannot be verified, so no
+// enrollment row is created. (Previously this soft-failed open and enrolled
+// anyway, which let a learner self-enroll in an unverifiable slug.)
 func TestEnroll_XPGate_CourseServiceDown(t *testing.T) {
 	t.Parallel()
 
@@ -248,8 +250,8 @@ func TestEnroll_XPGate_CourseServiceDown(t *testing.T) {
 	r := newDeadCourseRouter(t, repos)
 	rec := htDo(t, r, http.MethodPost, "/api/enrollments/any-course", "", htAuthHeader(t, "student"))
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("want 200 (soft-fail), got %d: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("want 404 (fail closed when catalog unreachable), got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
