@@ -23,6 +23,8 @@ import App from '../../layouts/App.astro';
   </div>
 
   <script>
+    import { escapeHtml, safeUrl } from '../../lib/escape';
+
     async function apiFetch(path: string) {
       const res = await fetch(`/api${path}`);
       if (!res.ok) { const err: any = new Error(); err.status = res.status; throw err; }
@@ -49,9 +51,9 @@ import App from '../../layouts/App.astro';
 
         const avatarEl = document.getElementById('up-avatar')!;
         if (user?.avatarUrl) {
-          const isUrl = user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://');
-          if (isUrl) {
-            avatarEl.innerHTML = `<img src="${user.avatarUrl}" alt="${username}" />`;
+          const src = safeUrl(user.avatarUrl);
+          if (src) {
+            avatarEl.innerHTML = `<img src="${escapeHtml(src)}" alt="${escapeHtml(username)}" />`;
           } else {
             avatarEl.style.fontSize = '2.2rem';
             avatarEl.textContent = user.avatarUrl;

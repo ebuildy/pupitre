@@ -75,6 +75,8 @@ const { title, description, activePage } = Astro.props;
   <slot />
 
   <script>
+    import { escapeHtml, safeUrl } from '../lib/escape';
+
     // ── Drawer ──────────────────────────────────────────────────────────
     const hamburger = document.getElementById('nav-hamburger');
     const drawer    = document.getElementById('nav-drawer');
@@ -117,21 +119,22 @@ const { title, description, activePage } = Astro.props;
         const navUser = document.getElementById('nav-user');
         if (!navUser) return;
 
-        const initial = (user.username || '?')[0].toUpperCase();
-        const isUrl = user.avatarUrl && (user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://'));
+        const initial = escapeHtml((user.username || '?')[0].toUpperCase());
+        const uname = escapeHtml(user.username);
+        const avatarSrc = safeUrl(user.avatarUrl);
         let avatarEl: string;
-        if (isUrl) {
-          avatarEl = `<img src="${user.avatarUrl}" alt="${user.username}" class="nav-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="nav-avatar-initial hidden">${initial}</div>`;
+        if (avatarSrc) {
+          avatarEl = `<img src="${escapeHtml(avatarSrc)}" alt="${uname}" class="nav-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="nav-avatar-initial hidden">${initial}</div>`;
         } else if (user.avatarUrl) {
-          avatarEl = `<div class="nav-avatar-initial text-[1.2rem]">${user.avatarUrl}</div>`;
+          avatarEl = `<div class="nav-avatar-initial text-[1.2rem]">${escapeHtml(user.avatarUrl)}</div>`;
         } else {
           avatarEl = `<div class="nav-avatar-initial">${initial}</div>`;
         }
 
         navUser.innerHTML = `
-          <a href="/profile" class="flex items-center gap-2 no-underline text-inherit" title="${user.username}">
+          <a href="/profile" class="flex items-center gap-2 no-underline text-inherit" title="${uname}">
             ${avatarEl}
-            <span class="text-[.875rem] font-medium text-ink-soft max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap hidden sm:inline">${user.username}</span>
+            <span class="text-[.875rem] font-medium text-ink-soft max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap hidden sm:inline">${uname}</span>
           </a>
           ${user.role === 'admin' ? '<a href="/admin" class="btn btn-sm btn-admin-nav">⚙ Admin</a>' : ''}
           <button id="nav-logout" class="btn btn-ghost btn-sm">Déconnexion</button>

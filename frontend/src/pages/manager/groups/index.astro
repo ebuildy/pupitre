@@ -77,6 +77,8 @@ import Manager from '../../../layouts/Manager.astro';
   </div>
 
   <script>
+    import { escapeHtml } from '../../../lib/escape';
+
     async function api(path: string, opts: { method?: string; body?: unknown } = {}) {
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -110,12 +112,12 @@ import Manager from '../../../layouts/Manager.astro';
         <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line);padding-left:${indentPx + 18}px">
           ${indent > 0 ? `<span style="color:var(--ink-soft);font-size:.8rem;flex-shrink:0">└</span>` : ''}
           <div style="flex:1;min-width:0">
-            <div style="font-weight:500">${node.name}</div>
+            <div style="font-weight:500">${escapeHtml(node.name)}</div>
             <div style="font-size:.78rem;color:var(--ink-soft);margin-top:2px">${node.memberCount} membre${node.memberCount !== 1 ? 's' : ''}${node.depth > 0 ? ' · sous-groupe' : ''}</div>
           </div>
-          <button class="btn btn-secondary btn-sm members-btn" data-id="${node.id}" data-name="${node.name}">Membres</button>
-          <button class="btn btn-secondary btn-sm subgroup-btn" data-id="${node.id}" data-name="${node.name}" title="Créer un sous-groupe">+</button>
-          <button class="btn btn-sm del-btn" style="background:var(--bad-soft);color:var(--bad);flex-shrink:0" data-id="${node.id}" data-name="${node.name}">Supprimer</button>
+          <button class="btn btn-secondary btn-sm members-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}">Membres</button>
+          <button class="btn btn-secondary btn-sm subgroup-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" title="Créer un sous-groupe">+</button>
+          <button class="btn btn-sm del-btn" style="background:var(--bad-soft);color:var(--bad);flex-shrink:0" data-id="${node.id}" data-name="${escapeHtml(node.name)}">Supprimer</button>
         </div>
         ${node.children.map((c: any) => renderNode(c, indent + 1)).join('')}`;
     }
@@ -199,7 +201,7 @@ import Manager from '../../../layouts/Manager.astro';
       }
       const sel = document.getElementById('add-member-select') as HTMLSelectElement;
       sel.innerHTML = '<option value="">Choisir un utilisateur…</option>' +
-        allUsers.map((u: any) => `<option value="${u.id}">${u.username} (${u.email})</option>`).join('');
+        allUsers.map((u: any) => `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`).join('');
     }
 
     async function refreshMembers() {
@@ -211,10 +213,10 @@ import Manager from '../../../layouts/Manager.astro';
         if (!list.length) { el.innerHTML = '<p class="text-soft text-sm">Aucun membre.</p>'; return; }
         el.innerHTML = list.map((u: any) => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
-            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:var(--blue);flex-shrink:0">${(u.username || '?')[0].toUpperCase()}</div>
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:var(--blue);flex-shrink:0">${escapeHtml((u.username || '?')[0].toUpperCase())}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.875rem;font-weight:500">${u.username}</div>
-              <div style="font-size:.75rem;color:var(--ink-soft)">${u.email}</div>
+              <div style="font-size:.875rem;font-weight:500">${escapeHtml(u.username)}</div>
+              <div style="font-size:.75rem;color:var(--ink-soft)">${escapeHtml(u.email)}</div>
             </div>
             <span class="badge ${u.role === 'admin' ? 'badge-red' : u.role === 'manager' ? 'badge-orange' : 'badge-blue'}" style="flex-shrink:0">${u.role}</span>
             <button class="btn btn-sm remove-btn" style="background:var(--bad-soft);color:var(--bad);flex-shrink:0" data-uid="${u.id}">Retirer</button>

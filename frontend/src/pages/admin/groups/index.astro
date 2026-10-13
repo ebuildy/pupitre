@@ -149,6 +149,8 @@ import Admin from '../../../layouts/Admin.astro';
   </div>
 
   <script>
+    import { escapeHtml } from '../../../lib/escape';
+
     // ── API helper ────────────────────────────────────────────────────────────
     async function api(path: string, opts: { method?: string; body?: unknown } = {}) {
       const token = localStorage.getItem('token');
@@ -217,18 +219,18 @@ import Admin from '../../../layouts/Admin.astro';
         : (node.source !== 'local' ? '<span class="badge badge-gray">Non mappé</span>' : '');
 
       const actions = [
-        `<button class="btn btn-secondary btn-sm members-btn" data-id="${node.id}" data-name="${node.name}" style="flex-shrink:0">Membres</button>`,
-        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm subgroup-btn" data-id="${node.id}" data-name="${node.name}" style="flex-shrink:0" title="Créer un sous-groupe">+</button>` : '',
-        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm edit-group-btn" data-id="${node.id}" data-name="${node.name}" style="flex-shrink:0" title="Renommer">✎</button>` : '',
-        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm move-btn" data-id="${node.id}" data-name="${node.name}" style="flex-shrink:0" title="Déplacer">⇄</button>` : '',
-        isLocal && !isDefault ? `<button class="btn btn-sm del-group-btn" style="background:var(--bad-soft);color:var(--bad);flex-shrink:0" data-id="${node.id}" data-name="${node.name}">✕</button>` : '',
+        `<button class="btn btn-secondary btn-sm members-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" style="flex-shrink:0">Membres</button>`,
+        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm subgroup-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" style="flex-shrink:0" title="Créer un sous-groupe">+</button>` : '',
+        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm edit-group-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" style="flex-shrink:0" title="Renommer">✎</button>` : '',
+        isLocal && !isDefault ? `<button class="btn btn-secondary btn-sm move-btn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" style="flex-shrink:0" title="Déplacer">⇄</button>` : '',
+        isLocal && !isDefault ? `<button class="btn btn-sm del-group-btn" style="background:var(--bad-soft);color:var(--bad);flex-shrink:0" data-id="${node.id}" data-name="${escapeHtml(node.name)}">✕</button>` : '',
       ].filter(Boolean).join('');
 
       const row = `
         <div class="group-row" data-id="${node.id}" style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);padding-left:${indentPx + 20}px">
           ${toggleBtn}
           <div style="flex:1;min-width:0">
-            <div style="font-weight:500;font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${node.name}</div>
+            <div style="font-weight:500;font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(node.name)}</div>
             <div style="font-size:.75rem;color:var(--ink-soft)">${node.memberCount} membre${node.memberCount !== 1 ? 's' : ''}${node.source !== 'local' ? ' · <span class="badge badge-orange" style="font-size:.7rem;padding:1px 5px">' + node.source + '</span>' : ''}${node.depth > 0 ? ' · <span class="badge badge-gray" style="font-size:.7rem;padding:1px 5px">sous-groupe</span>' : ''}</div>
           </div>
           ${roleBadge}
@@ -383,7 +385,7 @@ import Admin from '../../../layouts/Admin.astro';
       sel.innerHTML = '<option value="">Racine (aucun parent)</option>' +
         allGroups
           .filter(g => !excluded.has(g.id))
-          .map(g => `<option value="${g.id}">${'—'.repeat(g.depth)} ${g.name}</option>`)
+          .map(g => `<option value="${g.id}">${'—'.repeat(g.depth)} ${escapeHtml(g.name)}</option>`)
           .join('');
 
       document.getElementById('move-modal')!.style.display = 'flex';
@@ -430,7 +432,7 @@ import Admin from '../../../layouts/Admin.astro';
       }
       const sel = document.getElementById('add-member-select') as HTMLSelectElement;
       sel.innerHTML = '<option value="">Choisir un utilisateur…</option>' +
-        allUsers.map((u: any) => `<option value="${u.id}">${u.username} (${u.email})</option>`).join('');
+        allUsers.map((u: any) => `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`).join('');
     }
 
     async function refreshMembers() {
@@ -447,10 +449,10 @@ import Admin from '../../../layouts/Admin.astro';
             : '';
           return `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
-            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:var(--blue);flex-shrink:0">${(u.username||'?')[0].toUpperCase()}</div>
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;color:var(--blue);flex-shrink:0">${escapeHtml((u.username||'?')[0].toUpperCase())}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.875rem;font-weight:500">${u.username}</div>
-              <div style="font-size:.75rem;color:var(--ink-soft)">${u.email}</div>
+              <div style="font-size:.875rem;font-weight:500">${escapeHtml(u.username)}</div>
+              <div style="font-size:.75rem;color:var(--ink-soft)">${escapeHtml(u.email)}</div>
             </div>
             ${memberBadge}
             <span class="badge ${u.role === 'admin' ? 'badge-red' : u.role === 'manager' ? 'badge-orange' : 'badge-blue'}" style="flex-shrink:0">${u.role}</span>

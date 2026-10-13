@@ -77,6 +77,8 @@ import Manager from '../../../layouts/Manager.astro';
   </div>
 
   <script>
+    import { escapeHtml } from '../../../lib/escape';
+
     async function api(path: string, opts: { method?: string; body?: unknown } = {}) {
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
@@ -184,16 +186,16 @@ import Manager from '../../../layouts/Manager.astro';
         <tr data-uid="${u.id}">
           <td class="mu-td-member">
             <div class="mu-member-info">
-              <div class="mu-avatar">${(u.username || '?')[0].toUpperCase()}</div>
+              <div class="mu-avatar">${escapeHtml((u.username || '?')[0].toUpperCase())}</div>
               <div>
-                <div class="mu-member-name">${u.username}</div>
-                <div class="mu-member-email">${u.email}</div>
+                <div class="mu-member-name">${escapeHtml(u.username)}</div>
+                <div class="mu-member-email">${escapeHtml(u.email)}</div>
               </div>
             </div>
           </td>
           <td class="mu-td-count">${u.enrolledCourses ?? 0} cours</td>
           <td class="mu-td-action">
-            <button class="btn btn-secondary btn-sm manage-btn" data-uid="${u.id}" data-name="${u.username}">Gérer les inscriptions</button>
+            <button class="btn btn-secondary btn-sm manage-btn" data-uid="${u.id}" data-name="${escapeHtml(u.username)}">Gérer les inscriptions</button>
           </td>
         </tr>
       `).join('');

@@ -174,12 +174,20 @@ func (s *State) registerValidationCheck(request *http.Request, req registerReque
 		return http.StatusForbidden, "New user registration is currently disabled.", false
 	}
 
+	if !validateEmailFormat(req.Email) {
+		return http.StatusBadRequest, authMsgEmailInvalid, false
+	}
+
 	if !s.registrationAllowedForEmail(ctx, req.Email) {
 		return http.StatusForbidden, "Registration is restricted to specific email domains.", false
 	}
 
 	if len(req.Username) < authMinUsernameLen {
 		return http.StatusBadRequest, authMsgUsernameTooShort, false
+	}
+
+	if msg, ok := validateUsername(req.Username); !ok {
+		return http.StatusBadRequest, msg, false
 	}
 
 	if msg, ok := s.validatePasswordPolicy(request, req.Password); !ok {
@@ -398,6 +406,10 @@ func (s *State) usernameChangeCheck(ctx context.Context, uname, currentUserID st
 		return http.StatusBadRequest, authMsgUsernameTooShort, false
 	}
 
+	if msg, ok := validateUsername(uname); !ok {
+		return http.StatusBadRequest, msg, false
+	}
+
 	id, err := uuid.Parse(currentUserID)
 	if err == nil {
 		taken, _ := s.Repos.Users.ExistsUsernameExcluding(ctx, uname, id)
@@ -446,6 +458,14 @@ func (s *State) UpdateProfile(writer http.ResponseWriter, request *http.Request)
 
 				return
 			}
+		}
+	}
+
+	if body.AvatarURL != nil {
+		if msg, ok := validateAvatarURL(*body.AvatarURL); !ok {
+			s.Error(writer, http.StatusBadRequest, msg)
+
+			return
 		}
 	}
 

@@ -98,6 +98,8 @@ import App from '../layouts/App.astro';
   </div>
 
   <script>
+    import { escapeHtml, safeUrl } from '../lib/escape';
+
     const token = localStorage.getItem('token');
     if (!token) { window.location.href = '/login?redirect=/profile'; }
 
@@ -137,16 +139,13 @@ import App from '../layouts/App.astro';
       document.getElementById('profile-content')!.style.display = 'block';
 
       const isSso = user.authProvider && user.authProvider !== 'local' && user.authProvider !== '';
-      const initial = (user.username || '?')[0].toUpperCase();
+      const initial = escapeHtml((user.username || '?')[0].toUpperCase());
 
       // Sidebar mini-profile
       const avatarArea = document.getElementById('avatar-area')!;
-      const avatarIsUrl = user.avatarUrl && (
-        user.avatarUrl.startsWith('http://') ||
-        user.avatarUrl.startsWith('https://')
-      );
-      if (avatarIsUrl) {
-        avatarArea.innerHTML = `<img src="${user.avatarUrl}" alt="${user.username}" class="avatar-circle" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="avatar-initial" style="display:none">${initial}</div>`;
+      const avatarSrc = safeUrl(user.avatarUrl);
+      if (avatarSrc) {
+        avatarArea.innerHTML = `<img src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(user.username)}" class="avatar-circle" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="avatar-initial" style="display:none">${initial}</div>`;
       } else if (user.avatarUrl) {
         const emojiDiv = document.createElement('div');
         emojiDiv.className = 'avatar-initial';
